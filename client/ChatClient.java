@@ -57,8 +57,8 @@ public class ChatClient extends AbstractClient
    * attempting to reconnect.
    */
   protected void connectionClosed() {
-	  clientUI.display("Server has shut down. Closing application.");
-	  quit();
+	  clientUI.display("Disconnected from server. Closing application.");
+	  System.exit(0);
   }
 
   @Override
@@ -92,16 +92,67 @@ public class ChatClient extends AbstractClient
    */
   public void handleMessageFromClientUI(String message)
   {
-    try
-    {
-      sendToServer(message);
+	if(message.charAt(0) == '#') {
+		//Console commands
+		handleCommands(message);
+	} else {
+	    try
+	    {
+	      sendToServer(message);
+	    }
+	    catch(IOException e)
+	    {
+	      clientUI.display
+	        ("Could not send message to server.  Terminating client.");
+	      quit();
+	    }
     }
-    catch(IOException e)
-    {
-      clientUI.display
-        ("Could not send message to server.  Terminating client.");
-      quit();
-    }
+  }
+  
+  private void handleCommands(String command) {
+	  String[] inputs = command.split(" ");
+	  switch(inputs[0]) {
+		case "#quit": clientUI.display("Quitting...");
+			quit();
+			break;
+		case "#logoff":
+			try{
+				closeConnection();
+			} catch(IOException e) {
+				clientUI.display
+		          ("Error disconnecting from server. Terminating client.");
+				quit();
+			}
+			break;
+		case "#login":
+			try{
+				openConnection();
+			} catch(IOException e) {
+				clientUI.display
+		          ("Error connecting to server. Terminating client.");
+				quit();
+			}
+			break;
+		case "#gethost": clientUI.display(getHost());
+			break;
+		case "#getport": clientUI.display("" + getPort());
+			break;
+		case "#sethost":
+			try {
+				setHost(inputs[1]);
+			} catch (ArrayIndexOutOfBoundsException e) {
+				clientUI.display("Argument necessary\nUsage: #sethost <host>");
+			}
+			break;
+		case "#setport":
+			try {
+				setPort(Integer.parseInt(inputs[1]));
+			} catch (ArrayIndexOutOfBoundsException e) {
+				clientUI.display("Argument necessary\nUsage: #setport <port>");
+			}
+			break;
+		default: clientUI.display("Unknown or unsupported command");
+		}
   }
   
   /**
