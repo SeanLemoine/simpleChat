@@ -138,6 +138,7 @@ public class ChatClient extends AbstractClient
 		case "#getport": clientUI.display("" + getPort());
 			break;
 		case "#sethost":
+			//TODO: Only allow host setting if client is logged out
 			try {
 				setHost(inputs[1]);
 			} catch (ArrayIndexOutOfBoundsException e) {
@@ -145,10 +146,13 @@ public class ChatClient extends AbstractClient
 			}
 			break;
 		case "#setport":
+			//TODO: Only allow port setting if client is logged out
 			try {
 				setPort(Integer.parseInt(inputs[1]));
 			} catch (ArrayIndexOutOfBoundsException e) {
 				clientUI.display("Argument necessary\nUsage: #setport <port>");
+			} catch (IllegalArgumentException i) {
+				clientUI.display("Must set port as a four-digit integer");
 			}
 			break;
 		default: clientUI.display("Unknown or unsupported command");
