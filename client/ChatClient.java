@@ -23,9 +23,13 @@ public class ChatClient extends AbstractClient
   
   /**
    * The interface type variable.  It allows the implementation of 
-   * the display method in the client.
+   * the display method in the server.
    */
-  ChatIF clientUI; 
+  ChatIF clientUI;
+  
+  //Would ordinarily set value in overridden versions of openConnection()
+  //and closedConnection(), but can't as both are final
+  protected boolean loggedIn;
 
   
   //Constructors ****************************************************
@@ -44,6 +48,8 @@ public class ChatClient extends AbstractClient
     super(host, port); //Call the superclass constructor
     this.clientUI = clientUI;
     openConnection();
+    this.loggedIn = true;
+    
   }
 
   
@@ -57,8 +63,8 @@ public class ChatClient extends AbstractClient
    * attempting to reconnect.
    */
   protected void connectionClosed() {
-	  clientUI.display("Disconnected from server. Closing application.");
-	  System.exit(0);
+	  clientUI.display("Disconnected from server. Logging out");
+	  this.loggedIn = false;
   }
 
   @Override
@@ -95,7 +101,7 @@ public class ChatClient extends AbstractClient
 	if(message.charAt(0) == '#') {
 		//Console commands
 		handleCommands(message);
-	} else {
+	} else if(loggedIn) {
 	    try
 	    {
 	      sendToServer(message);
@@ -106,7 +112,8 @@ public class ChatClient extends AbstractClient
 	        ("Could not send message to server.  Terminating client.");
 	      quit();
 	    }
-    }
+    } else clientUI.display("Not currently logged in to a server.\n"
+    		+ "Set desired host/port with #sethost and #setport and login with #login");
   }
   
   private void handleCommands(String command) {
@@ -116,45 +123,54 @@ public class ChatClient extends AbstractClient
 			quit();
 			break;
 		case "#logoff":
-			try{
-				closeConnection();
-			} catch(IOException e) {
-				clientUI.display
-		          ("Error disconnecting from server. Terminating client.");
-				quit();
-			}
+			if(loggedIn) {
+				try{
+					closeConnection();
+					this.loggedIn = false;
+				} catch(IOException e) {
+					clientUI.display
+			          ("Error disconnecting from server. Terminating client.");
+					quit();
+				}
+				clientUI.display("Logged off");
+			} else clientUI.display("Not currently logged in");
 			break;
 		case "#login":
-			try{
-				openConnection();
-			} catch(IOException e) {
-				clientUI.display
-		          ("Error connecting to server. Terminating client.");
-				quit();
-			}
+			if(!loggedIn) {
+				try{
+					openConnection();
+					this.loggedIn = true;
+				} catch(IOException e) {
+					clientUI.display
+			          ("Error connecting to server. Terminating client.");
+					quit();
+				}
+				clientUI.display("Logged in successfully");
+			} else clientUI.display("Already logged in");
 			break;
 		case "#gethost": clientUI.display(getHost());
 			break;
 		case "#getport": clientUI.display("" + getPort());
 			break;
 		case "#sethost":
-			//TODO: Only allow host setting if client is logged out
-			try {
-				setHost(inputs[1]);
-			} catch (ArrayIndexOutOfBoundsException e) {
-				clientUI.display("Argument necessary\nUsage: #sethost <host>");
-			}
+			if(!loggedIn) {
+				try {
+					setHost(inputs[1]);
+				} catch (ArrayIndexOutOfBoundsException e) {
+					clientUI.display("Argument necessary\nUsage: #sethost <host>");
+				}
+	  		} else clientUI.display("Cannot change host while logged in");
 			break;
 		case "#setport":
-			//TODO: Only allow port setting if client is logged out
-			try {
-				setPort(Integer.parseInt(inputs[1]));
-			} catch (ArrayIndexOutOfBoundsException e) {
-				clientUI.display("Argument necessary\nUsage: #setport <port>");
-			} catch (IllegalArgumentException i) {
-				clientUI.display("Must set port as a four-digit integer");
-			}
-			break;
+			if(!loggedIn) {
+				try {
+					setPort(Integer.parseInt(inputs[1]));
+				} catch (ArrayIndexOutOfBoundsException e) {
+					clientUI.display("Argument necessary\nUsage: #setport <port>");
+				} catch (IllegalArgumentException i) {
+					clientUI.display("Must set port as a four-digit integer");
+				}
+			} else clientUI.display("Cannot change port while logged in");
 		default: clientUI.display("Unknown or unsupported command");
 		}
   }
@@ -166,7 +182,7 @@ public class ChatClient extends AbstractClient
   {
     try
     {
-      closeConnection();
+    	closeConnection();
     }
     catch(IOException e) {
     	connectionException(e);
