@@ -27,9 +27,13 @@ public class ChatClient extends AbstractClient
    */
   ChatIF clientUI;
   
-  //Would ordinarily set value in overridden versions of openConnection()
-  //and closedConnection(), but can't as both are final
+  /**
+   * An easy-access boolean indicating whether or not the client is currently
+   * connected to a server.
+   */
   protected boolean loggedIn;
+  
+  protected String loginID;
 
   
   //Constructors ****************************************************
@@ -42,13 +46,23 @@ public class ChatClient extends AbstractClient
    * @param clientUI The interface type variable.
    */
   
-  public ChatClient(String host, int port, ChatIF clientUI) 
+  public ChatClient(String loginID, String host, int port, ChatIF clientUI) 
     throws IOException 
   {
     super(host, port); //Call the superclass constructor
+    this.loginID = loginID;
     this.clientUI = clientUI;
-    openConnection();
     this.loggedIn = true;
+    
+    try {
+	      openConnection();
+	      sendToServer("#login " + this.loginID);
+    }
+    catch(IOException e) {
+    	clientUI.display("Cannot open connection. Awaiting command.");
+	    this.loggedIn = false;
+    }
+    
     
   }
 
@@ -77,7 +91,9 @@ public class ChatClient extends AbstractClient
    *            the exception raised.
    */
   protected void connectionException(Exception exception) {
-	  clientUI.display("Error: Abruptly lost connection with server. Exiting...");
+	  clientUI.display("WARNING - The server has stopped listening for connections\n" + 
+	  		"SERVER SHUTTING DOWN! DISCONNECTING!\n" + 
+	  		"Abnormal termination of connection.");
 	  System.exit(1);
   }
     
@@ -132,7 +148,8 @@ public class ChatClient extends AbstractClient
 			          ("Error disconnecting from server. Terminating client.");
 					quit();
 				}
-				clientUI.display("Logged off");
+				clientUI.display("Connection closed"
+						+ "");
 			} else clientUI.display("Not currently logged in");
 			break;
 		case "#login":
@@ -140,6 +157,7 @@ public class ChatClient extends AbstractClient
 				try{
 					openConnection();
 					this.loggedIn = true;
+					sendToServer("#login " + this.loginID);
 				} catch(IOException e) {
 					clientUI.display
 			          ("Error connecting to server. Terminating client.");
@@ -156,6 +174,7 @@ public class ChatClient extends AbstractClient
 			if(!loggedIn) {
 				try {
 					setHost(inputs[1]);
+					clientUI.display("Host set to: " + inputs[1]);
 				} catch (ArrayIndexOutOfBoundsException e) {
 					clientUI.display("Argument necessary\nUsage: #sethost <host>");
 				}
@@ -165,16 +184,37 @@ public class ChatClient extends AbstractClient
 			if(!loggedIn) {
 				try {
 					setPort(Integer.parseInt(inputs[1]));
+					clientUI.display("Port set to: " + inputs[1]);
 				} catch (ArrayIndexOutOfBoundsException e) {
 					clientUI.display("Argument necessary\nUsage: #setport <port>");
 				} catch (IllegalArgumentException i) {
 					clientUI.display("Must set port as a four-digit integer");
 				}
 			} else clientUI.display("Cannot change port while logged in");
+			break;
 		default: clientUI.display("Unknown or unsupported command");
 		}
   }
   
+  /**
+   * The getter method for the client's loginID.
+   * 
+   * @return loginID The current value of the protected string loginID
+   */
+  public String getLoginID() {
+	return loginID;
+  }
+
+  /**
+   * The setter method for the client's loginID.
+   * 
+   * @param loginID The replacement value for the protected string loginID
+   */
+  public void setLoginID(String loginID) {
+	this.loginID = loginID;
+  }
+
+
   /**
    * This method terminates the client.
    */
